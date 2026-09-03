@@ -360,6 +360,23 @@ window-rule {
     clip-to-geometry true
 }
 
+// Esconde a janelinha preta do xwaylandvideobridge (dotfiles).
+// Ele fica em autostart pelo pacote KDE; aqui vira invisível e minúsculo,
+// mantendo o bridge de screen-share pra apps XWayland funcionando.
+window-rule {
+    match app-id=r#"^xwaylandvideobridge$"#
+
+    open-floating true
+    focus-ring { off; }
+    opacity 0.0
+    default-column-width { fixed 1; }
+    default-window-height { fixed 1; }
+    min-width 1
+    max-width 1
+    min-height 1
+    max-height 1
+}
+
 binds {
     // Keys consist of modifiers separated by + signs, followed by an XKB key name
     // in the end. To find an XKB name for a particular key, you may use a program
