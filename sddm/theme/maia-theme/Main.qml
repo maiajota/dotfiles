@@ -12,6 +12,69 @@ Rectangle {
 
     property bool useVideo: true
 
+    // Lista de usuários do sistema (preenchida a partir do userModel do SDDM)
+    property var userList: []
+    property int userIndex: 0
+    property string selectedUser: userList.length > 0 ? userList[userIndex].name : ""
+
+    function displayName(u) {
+        if (!u)
+            return "Usuário"
+        return (u.realName && u.realName !== "") ? u.realName : u.name
+    }
+
+    function cycleUser(step) {
+        if (userList.length < 2)
+            return
+        userIndex = (userIndex + step + userList.length) % userList.length
+        password.text = ""
+        loginMessage.text = ""
+    }
+
+    // Lista de sessões / interfaces disponíveis (sessionModel do SDDM)
+    property var sessionList: []
+    property int sessionIndex: 0
+    property string selectedSessionName: sessionList.length > 0 ? sessionList[sessionIndex] : ""
+
+    function cycleSession(step) {
+        if (sessionList.length < 2)
+            return
+        sessionIndex = (sessionIndex + step + sessionList.length) % sessionList.length
+    }
+
+    Component.onCompleted: {
+        var arr = []
+        for (var i = 0; i < userModel.count; i++) {
+            var idx = userModel.index(i, 0)
+            arr.push({
+                name: userModel.data(idx, Qt.UserRole + 1) || "",
+                realName: userModel.data(idx, Qt.UserRole + 2) || ""
+            })
+        }
+        userList = arr
+
+        // Começa no último usuário que logou
+        for (var j = 0; j < arr.length; j++) {
+            if (arr[j].name === userModel.lastUser) {
+                userIndex = j
+                break
+            }
+        }
+
+        // Sessões (Plasma, niri, ...) a partir do sessionModel
+        var sarr = []
+        for (var s = 0; s < sessionModel.count; s++) {
+            var sidx = sessionModel.index(s, 0)
+            var sname = sessionModel.data(sidx, Qt.UserRole + 4)
+            sarr.push(sname && sname !== "" ? sname : ("Sessão " + (s + 1)))
+        }
+        sessionList = sarr
+        if (sessionModel.lastIndex >= 0 && sessionModel.lastIndex < sarr.length)
+            sessionIndex = sessionModel.lastIndex
+
+        password.forceActiveFocus()
+    }
+
     Timer {
         interval: 1000
         running: true
@@ -103,47 +166,84 @@ Rectangle {
         anchors.bottomMargin: 56
         spacing: 14
 
+        Row {
+            spacing: 12
+
+            Text {
+                id: userNameText
+                text: root.displayName(userList.length > 0 ? userList[userIndex] : null)
+                color: "white"
+                font.pixelSize: 26
+                font.family: "JetBrains Mono"
+                font.bold: true
+
+                MouseArea {
+                    anchors.fill: parent
+                    anchors.margins: -10
+                    cursorShape: userList.length > 1 ? Qt.PointingHandCursor : Qt.ArrowCursor
+                    onClicked: root.cycleUser(1)
+                }
+            }
+
+            Text {
+                visible: userList.length > 1
+                anchors.verticalCenter: userNameText.verticalCenter
+                text: "‹ " + (userIndex + 1) + "/" + userList.length + " ›"
+                color: "#8fb3c7"
+                font.pixelSize: 15
+                font.family: "JetBrains Mono"
+
+                MouseArea {
+                    anchors.fill: parent
+                    anchors.margins: -8
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: root.cycleUser(1)
+                }
+            }
+        }
+
         Text {
-            text: userModel.lastUser !== "" ? userModel.lastUser : "Usuário"
-            color: "white"
-            font.pixelSize: 26
+            visible: {
+                var u = userList.length > 0 ? userList[userIndex] : null
+                return u && u.realName && u.realName !== "" && u.realName !== u.name
+            }
+            text: userList.length > 0 ? "@" + userList[userIndex].name : ""
+            color: "#7f9bb0"
+            font.pixelSize: 13
             font.family: "JetBrains Mono"
-            font.bold: true
-        }
-
-        Rectangle {
-            width: 280
-            height: 2
-            color: "#55aacc"
-            opacity: 0.8
-        }
-
-        TextField {
-            id: username
-            visible: false
-            text: userModel.lastUser
         }
 
         TextField {
             id: password
             width: 280
-            height: 46
-            placeholderText: "Senha"
+            height: 40
             echoMode: TextInput.Password
             color: "white"
             font.family: "JetBrains Mono"
-            font.pixelSize: 14
+            font.pixelSize: 16
+            font.letterSpacing: 5
             selectByMouse: true
+            padding: 0
+            topPadding: 4
+            bottomPadding: 10
+            // compensa o espaço que o letterSpacing joga antes da 1ª bola
+            leftPadding: -2
 
+            // A linha azul é a "borda": vira o sublinhado do campo
             background: Rectangle {
-                radius: 8
-                color: "#14000000"
-                border.width: 1
-                border.color: password.activeFocus ? "#66d9ff" : "#55aaccff"
+                anchors.bottom: parent.bottom
+                width: parent.width
+                height: 2
+                color: password.activeFocus ? "#66d9ff" : "#55aacc"
+                opacity: password.activeFocus ? 1.0 : 0.8
             }
 
+            // Setas cima/baixo também trocam o usuário
+            Keys.onUpPressed: root.cycleUser(-1)
+            Keys.onDownPressed: root.cycleUser(1)
+
             onAccepted: {
-                sddm.login(username.text, password.text, sessionModel.index)
+                sddm.login(root.selectedUser, password.text, root.sessionIndex)
             }
         }
 
@@ -171,7 +271,7 @@ Rectangle {
             }
 
             onClicked: {
-                sddm.login(username.text, password.text, sessionModel.index)
+                sddm.login(root.selectedUser, password.text, root.sessionIndex)
             }
         }
 
@@ -194,99 +294,66 @@ Rectangle {
     }
 
     Row {
-        id: bottomControls
+        id: topControls
 
-        anchors.right: parent.right
-        anchors.bottom: parent.bottom
-        anchors.rightMargin: 56
-        anchors.bottomMargin: 56
-        spacing: 12
+        anchors.left: parent.left
+        anchors.top: parent.top
+        anchors.leftMargin: 56
+        anchors.topMargin: 48
+        spacing: 26
 
-        function glassColor(button) {
+        function txtColor(button) {
             if (button.down)
-                return "#35ffffff"
-                if (button.hovered)
-                    return "#25ffffff"
-                    return "#18ffffff"
+                return "#66d9ff"
+            return button.hovered ? "#eaf4fa" : "#9fb8c8"
+        }
+
+        Button {
+            id: sessionButton
+            padding: 0
+            hoverEnabled: true
+            visible: sessionList.length > 0
+            text: root.selectedSessionName.toUpperCase()
+            background: Item {}
+            contentItem: Text {
+                text: sessionButton.text
+                color: topControls.txtColor(sessionButton)
+                font.family: "JetBrains Mono"
+                font.pixelSize: 13
+                font.bold: true
+            }
+            onClicked: root.cycleSession(1)
         }
 
         Button {
             id: rebootButton
-            width: 135
-            height: 48
+            padding: 0
             hoverEnabled: true
-            text: "Reiniciar"
-
-            background: Rectangle {
-                radius: 12
-                color: bottomControls.glassColor(rebootButton)
-                border.width: 1
-                border.color: "#40ffffff"
-
-                Rectangle {
-                    anchors.fill: parent
-                    anchors.margins: 1
-                    radius: 11
-                    color: "transparent"
-                    border.width: 1
-                    border.color: "#10ffffff"
-                }
-            }
-
+            text: "REINICIAR"
+            background: Item {}
             contentItem: Text {
                 text: rebootButton.text
-                color: "white"
+                color: topControls.txtColor(rebootButton)
                 font.family: "JetBrains Mono"
                 font.pixelSize: 13
-                horizontalAlignment: Text.AlignHCenter
-                verticalAlignment: Text.AlignVCenter
-
-                leftPadding: 20
-                rightPadding: 20
-                topPadding: 10
-                bottomPadding: 10
+                font.bold: true
             }
-
             onClicked: sddm.reboot()
         }
 
         Button {
             id: shutdownButton
-            width: 135
-            height: 48
+            padding: 0
             hoverEnabled: true
-            text: "Desligar"
-
-            background: Rectangle {
-                radius: 12
-                color: bottomControls.glassColor(shutdownButton)
-                border.width: 1
-                border.color: "#40ffffff"
-
-                Rectangle {
-                    anchors.fill: parent
-                    anchors.margins: 1
-                    radius: 11
-                    color: "transparent"
-                    border.width: 1
-                    border.color: "#10ffffff"
-                }
-            }
-
+            text: "DESLIGAR"
+            background: Item {}
             contentItem: Text {
                 text: shutdownButton.text
-                color: "white"
+                color: topControls.txtColor(shutdownButton)
                 font.family: "JetBrains Mono"
                 font.pixelSize: 13
-                horizontalAlignment: Text.AlignHCenter
-                verticalAlignment: Text.AlignVCenter
-
-                leftPadding: 20
-                rightPadding: 20
-                topPadding: 10
-                bottomPadding: 10
+                font.bold: true
             }
-
             onClicked: sddm.powerOff()
         }
     }
