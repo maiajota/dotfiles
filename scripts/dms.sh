@@ -15,6 +15,13 @@ NIRI_SESSION_FILE="/usr/share/wayland-sessions/niri.desktop"
 
 SDDM_STATE_FILE="/var/lib/sddm/state.conf"
 
+DMS_CONFIG_DIR="$HOME/.config/DankMaterialShell"
+DMS_PLUGINS_DIR="$DMS_CONFIG_DIR/plugins"
+DMS_PLUGIN_SETTINGS="$DMS_CONFIG_DIR/plugin_settings.json"
+DMS_PLUGINS=(
+    niriWindows
+)
+
 enable_dms_copr() {
     info "Verificando COPR do DMS ($DMS_COPR)..."
 
@@ -93,6 +100,49 @@ install_niri_config() {
     fi
 }
 
+install_dms_plugins() {
+    if [[ ${#DMS_PLUGINS[@]} -eq 0 ]]; then
+        return 0
+    fi
+
+    info "Instalando plugins do DMS..."
+
+    if ! command_exists dms; then
+        warning "dms não encontrado — pulando plugins."
+        return 0
+    fi
+
+    mkdir -p "$DMS_CONFIG_DIR"
+
+    for plugin in "${DMS_PLUGINS[@]}"; do
+        if [[ -d "$DMS_PLUGINS_DIR/$plugin" ]]; then
+            success "Plugin $plugin já está instalado."
+        else
+            info "Instalando plugin: $plugin"
+            dms plugins install "$plugin"
+        fi
+
+        # Marca como habilitado no plugin_settings.json
+        if command_exists jq; then
+            local tmp
+            tmp="$(mktemp)"
+            if [[ -f "$DMS_PLUGIN_SETTINGS" ]]; then
+                jq --arg p "$plugin" '.[$p] = ((.[$p] // {}) + {enabled: true})' \
+                    "$DMS_PLUGIN_SETTINGS" > "$tmp" && mv "$tmp" "$DMS_PLUGIN_SETTINGS"
+            else
+                jq -n --arg p "$plugin" '{($p): {enabled: true}}' > "$DMS_PLUGIN_SETTINGS"
+            fi
+        fi
+
+        # Aplica ao vivo se o DMS estiver rodando
+        if pgrep -f 'quickshell/dms' >/dev/null 2>&1; then
+            dms ipc call plugins enable "$plugin" >/dev/null 2>&1 || true
+        fi
+    done
+
+    success "Plugins do DMS preparados."
+}
+
 set_niri_as_default_session() {
     info "Definindo niri como sessão padrão no SDDM..."
 
@@ -127,6 +177,7 @@ setup_dms() {
     install_dms
     install_niri
     install_niri_config
+    install_dms_plugins
     set_niri_as_default_session
 
     success "DankMaterialShell preparado (sessão padrão: niri)."
