@@ -2,8 +2,13 @@
 set -euo pipefail
 
 SHELL_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(cd "$SHELL_SCRIPT_DIR/.." && pwd)"
 
 source "$SHELL_SCRIPT_DIR/common.sh"
+
+STARSHIP_COPR="atim/starship"
+STARSHIP_CONFIG_SOURCE="$ROOT_DIR/shell/starship.toml"
+STARSHIP_CONFIG_DEST="$HOME/.config/starship.toml"
 
 install_zsh() {
     info "Verificando Zsh..."
@@ -56,6 +61,39 @@ install_zsh_config() {
     success "Configuração do Zsh instalada."
 }
 
+install_starship() {
+    info "Verificando Starship..."
+
+    if command_exists starship; then
+        success "Starship já está instalado."
+    elif command_exists dnf; then
+        if ! dnf copr list 2>/dev/null | grep -q "atim/starship"; then
+            info "Habilitando COPR: $STARSHIP_COPR"
+            sudo dnf copr enable -y "$STARSHIP_COPR"
+        fi
+        sudo dnf install -y starship
+        success "Starship instalado."
+    else
+        warning "Starship só está configurado para instalação via DNF/COPR — pulando."
+        return 0
+    fi
+
+    if [[ ! -f "$STARSHIP_CONFIG_SOURCE" ]]; then
+        warning "starship.toml não encontrado em $STARSHIP_CONFIG_SOURCE — pulando config."
+        return 0
+    fi
+
+    mkdir -p "$(dirname "$STARSHIP_CONFIG_DEST")"
+
+    if [[ -f "$STARSHIP_CONFIG_DEST" ]] && ! cmp -s "$STARSHIP_CONFIG_SOURCE" "$STARSHIP_CONFIG_DEST"; then
+        backup_file "$STARSHIP_CONFIG_DEST"
+    fi
+
+    cp "$STARSHIP_CONFIG_SOURCE" "$STARSHIP_CONFIG_DEST"
+
+    success "Configuração do Starship instalada."
+}
+
 set_default_shell() {
     local zsh_path
 
@@ -76,6 +114,7 @@ set_default_shell() {
 setup_shell() {
     info "Configurando shell..."
     install_zsh
+    install_starship
     install_zsh_config
     set_default_shell
     success "Shell preparado."

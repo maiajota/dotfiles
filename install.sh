@@ -14,8 +14,11 @@ source "$ROOT_DIR/scripts/packages.sh"
 source "$ROOT_DIR/scripts/sddm.sh"
 source "$ROOT_DIR/scripts/kde.sh"
 source "$ROOT_DIR/scripts/dms.sh"
+source "$ROOT_DIR/scripts/fonts.sh"
+source "$ROOT_DIR/scripts/appearance.sh"
 source "$ROOT_DIR/scripts/kitty.sh"
 source "$ROOT_DIR/scripts/shell.sh"
+source "$ROOT_DIR/scripts/fastfetch.sh"
 source "$ROOT_DIR/scripts/pokemon.sh"
 source "$ROOT_DIR/scripts/ani-cli.sh"
 
@@ -67,8 +70,14 @@ setup_dms
 
 echo
 
+setup_fonts
+setup_appearance
+
+echo
+
 setup_kitty
 setup_shell
+setup_fastfetch
 setup_pokemon
 setup_ani_cli
 

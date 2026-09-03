@@ -6,16 +6,10 @@ ROOT_DIR="$(cd "$KDE_SCRIPT_DIR/.." && pwd)"
 
 source "$KDE_SCRIPT_DIR/common.sh"
 
-require_kde() {
+is_kde_session() {
     local desktop="${XDG_CURRENT_DESKTOP:-}"
 
-    if [[ "$desktop" != *"KDE"* ]]; then
-        error "KDE Plasma não foi detectado."
-        error "Desktop atual: ${desktop:-desconhecido}"
-        exit 1
-    fi
-
-    success "KDE Plasma detectado."
+    [[ "$desktop" == *"KDE"* ]]
 }
 
 detect_plasma_version() {
@@ -39,7 +33,11 @@ detect_kde_session() {
 setup_kde() {
     info "Configurando KDE Plasma..."
 
-    require_kde
+    if ! is_kde_session; then
+        warning "Sessão atual não é KDE (${XDG_CURRENT_DESKTOP:-desconhecido}) — pulando etapa do KDE."
+        return 0
+    fi
+
     detect_plasma_version
     detect_kde_session
 

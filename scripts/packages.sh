@@ -74,6 +74,7 @@ install_required_packages() {
         wget
         unzip
         rsync
+        jq
         jetbrains-mono-fonts
     )
 

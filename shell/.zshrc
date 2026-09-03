@@ -23,8 +23,17 @@ setopt CORRECT
 autoload -Uz compinit
 compinit
 
-# Prompt
-PROMPT='%F{cyan}%n@%m%f:%F{blue}%~%f %# '
-
 # PATH
 export PATH="$HOME/.local/bin:$HOME/bin:$PATH"
+
+# Prompt (Starship)
+if command -v starship >/dev/null 2>&1; then
+    eval "$(starship init zsh)"
+else
+    PROMPT='%F{cyan}%n@%m%f:%F{blue}%~%f %# '
+fi
+
+# Fastfetch no início da sessão interativa
+if [[ -o interactive ]] && command -v fastfetch >/dev/null 2>&1; then
+    fastfetch
+fi

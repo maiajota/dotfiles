@@ -1,0 +1,79 @@
+# ==========================================
+# Maia Dotfiles - Starship
+# ==========================================
+
+add_newline = true
+command_timeout = 800
+
+format = """
+[](fg:#bca5f2)\
+$os\
+$username\
+[](bg:#4e3d76 fg:#bca5f2)\
+$directory\
+[](fg:#4e3d76 bg:#2a2438)\
+$git_branch\
+$git_status\
+[](fg:#2a2438)\
+$fill\
+$cmd_duration\
+$time\
+$line_break\
+$character"""
+
+[fill]
+symbol = " "
+
+[character]
+success_symbol = "[❯](bold #7fff9a)"
+error_symbol = "[❯](bold #ff728f)"
+vimcmd_symbol = "[❮](bold #bca5f2)"
+
+[os]
+disabled = false
+style = "bg:#bca5f2 fg:#141218"
+format = "[ $symbol ]($style)"
+
+[os.symbols]
+Fedora = ""
+Linux = ""
+
+[username]
+show_always = false
+style_user = "bg:#bca5f2 fg:#141218"
+style_root = "bg:#ff728f fg:#141218"
+format = "[ $user ]($style)"
+
+[directory]
+style = "bg:#4e3d76 fg:#e9e0ff"
+format = "[ $path ]($style)"
+truncation_length = 3
+truncation_symbol = "…/"
+read_only = " "
+
+[directory.substitutions]
+"Documents" = " "
+"Downloads" = " "
+"Music" = " "
+"Pictures" = " "
+"dotfile" = " "
+
+[git_branch]
+symbol = ""
+style = "bg:#2a2438 fg:#d7c6ff"
+format = "[ $symbol $branch ]($style)"
+
+[git_status]
+style = "bg:#2a2438 fg:#ffe7a5"
+format = "[$all_status$ahead_behind ]($style)"
+
+[cmd_duration]
+min_time = 2000
+style = "fg:#9d99a5"
+format = "[  $duration ]($style)"
+
+[time]
+disabled = false
+time_format = "%H:%M"
+style = "fg:#9d99a5"
+format = "[ $time ]($style)"
