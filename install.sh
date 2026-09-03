@@ -13,6 +13,7 @@ source "$ROOT_DIR/scripts/system.sh"
 source "$ROOT_DIR/scripts/packages.sh"
 source "$ROOT_DIR/scripts/sddm.sh"
 source "$ROOT_DIR/scripts/kde.sh"
+source "$ROOT_DIR/scripts/dms.sh"
 source "$ROOT_DIR/scripts/kitty.sh"
 source "$ROOT_DIR/scripts/shell.sh"
 source "$ROOT_DIR/scripts/pokemon.sh"
@@ -59,6 +60,10 @@ setup_sddm
 echo
 
 setup_kde
+
+echo
+
+setup_dms
 
 echo
 
