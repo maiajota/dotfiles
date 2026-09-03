@@ -25,3 +25,6 @@ compinit
 
 # Prompt
 PROMPT='%F{cyan}%n@%m%f:%F{blue}%~%f %# '
+
+# PATH
+export PATH="$HOME/.local/bin:$HOME/bin:$PATH"
