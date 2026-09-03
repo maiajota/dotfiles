@@ -2,14 +2,15 @@
 set -euo pipefail
 
 DMS_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(cd "$DMS_SCRIPT_DIR/.." && pwd)"
 
 source "$DMS_SCRIPT_DIR/common.sh"
 
 DMS_COPR="avengemedia/dms"
 
+NIRI_CONFIG_SOURCE="$ROOT_DIR/niri"
 NIRI_CONFIG_DIR="$HOME/.config/niri"
 NIRI_CONFIG="$NIRI_CONFIG_DIR/config.kdl"
-NIRI_DEFAULT_CONFIG="/usr/share/doc/niri/default-config.kdl"
 NIRI_SESSION_FILE="/usr/share/wayland-sessions/niri.desktop"
 
 SDDM_STATE_FILE="/var/lib/sddm/state.conf"
@@ -64,52 +65,29 @@ install_niri() {
     success "niri instalado."
 }
 
-configure_niri_autostart() {
-    info "Configurando autostart do DMS no niri..."
+install_niri_config() {
+    info "Instalando config do niri..."
+
+    if [[ ! -f "$NIRI_CONFIG_SOURCE/config.kdl" ]]; then
+        error "config.kdl não encontrado:"
+        error "$NIRI_CONFIG_SOURCE/config.kdl"
+        exit 1
+    fi
 
     mkdir -p "$NIRI_CONFIG_DIR/dms"
 
-    # O niri gera o config no primeiro start; se ainda não existe, parte do template padrão.
-    if [[ ! -f "$NIRI_CONFIG" ]]; then
-        if [[ -f "$NIRI_DEFAULT_CONFIG" ]]; then
-            info "Criando config.kdl a partir do template padrão do niri."
-            cp "$NIRI_DEFAULT_CONFIG" "$NIRI_CONFIG"
-        else
-            info "Criando config.kdl mínimo."
-            : > "$NIRI_CONFIG"
-        fi
-    fi
-
-    # Já configurado? Não mexe (evita empilhar backups a cada re-run).
-    if grep -qE 'spawn-at-startup\s+"dms"\s+"run"' "$NIRI_CONFIG" \
-        && grep -q 'include "dms/colors.kdl"' "$NIRI_CONFIG"; then
-        success "Autostart do DMS já configurado no niri."
-        return 0
-    fi
-
-    backup_file "$NIRI_CONFIG"
-
-    # O DMS substitui a waybar: comenta o spawn padrão se estiver presente.
-    if grep -qE '^\s*spawn-at-startup\s+"waybar"' "$NIRI_CONFIG"; then
-        sed -i -E 's|^(\s*)(spawn-at-startup\s+"waybar")|\1/-\2|' "$NIRI_CONFIG"
-        info "waybar desativada no niri (o DMS assume a barra)."
-    fi
-
-    # Stub de cores para o include não quebrar antes do primeiro run do DMS
-    # (o próprio DMS regenera esse arquivo com o tema do wallpaper).
+    # Stub de cores para o `include "dms/colors.kdl"` não quebrar antes do
+    # primeiro run do DMS (o próprio DMS regenera com o tema do wallpaper).
     [[ -f "$NIRI_CONFIG_DIR/dms/colors.kdl" ]] || : > "$NIRI_CONFIG_DIR/dms/colors.kdl"
 
-    if ! grep -q 'include "dms/colors.kdl"' "$NIRI_CONFIG"; then
-        printf '\n// DMS (dotfiles)\ninclude "dms/colors.kdl"\n' >> "$NIRI_CONFIG"
+    if [[ -f "$NIRI_CONFIG" ]] && ! cmp -s "$NIRI_CONFIG_SOURCE/config.kdl" "$NIRI_CONFIG"; then
+        backup_file "$NIRI_CONFIG"
     fi
 
-    grep -qE 'spawn-at-startup\s+"dms"\s+"run"' "$NIRI_CONFIG" \
-        || printf 'spawn-at-startup "dms" "run"\n' >> "$NIRI_CONFIG"
-
-    success "Autostart do DMS configurado no niri."
+    cp "$NIRI_CONFIG_SOURCE/config.kdl" "$NIRI_CONFIG"
 
     if niri validate --config "$NIRI_CONFIG" >/dev/null 2>&1; then
-        success "Config do niri validada."
+        success "Config do niri instalada e validada."
     else
         warning "niri validate reportou problemas em $NIRI_CONFIG — revise manualmente."
     fi
@@ -148,7 +126,7 @@ setup_dms() {
     enable_dms_copr
     install_dms
     install_niri
-    configure_niri_autostart
+    install_niri_config
     set_niri_as_default_session
 
     success "DankMaterialShell preparado (sessão padrão: niri)."
