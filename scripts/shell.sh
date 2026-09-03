@@ -61,6 +61,33 @@ install_zsh_config() {
     success "Configuração do Zsh instalada."
 }
 
+install_zsh_plugins() {
+    info "Instalando plugins e utilitários do shell..."
+
+    if ! command_exists dnf; then
+        warning "Plugins do shell configurados para instalação via DNF — pulando."
+        return 0
+    fi
+
+    local packages=(
+        zsh-autosuggestions
+        zsh-syntax-highlighting
+        fzf
+        fd-find
+        bat
+        eza
+    )
+
+    for package in "${packages[@]}"; do
+        if rpm -q "$package" >/dev/null 2>&1; then
+            success "$package já está instalado."
+        else
+            sudo dnf install -y "$package"
+            success "$package instalado."
+        fi
+    done
+}
+
 install_starship() {
     info "Verificando Starship..."
 
@@ -114,6 +141,7 @@ set_default_shell() {
 setup_shell() {
     info "Configurando shell..."
     install_zsh
+    install_zsh_plugins
     install_starship
     install_zsh_config
     set_default_shell

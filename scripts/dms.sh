@@ -18,6 +18,8 @@ SDDM_STATE_FILE="/var/lib/sddm/state.conf"
 DMS_CONFIG_DIR="$HOME/.config/DankMaterialShell"
 DMS_PLUGINS_DIR="$DMS_CONFIG_DIR/plugins"
 DMS_PLUGIN_SETTINGS="$DMS_CONFIG_DIR/plugin_settings.json"
+DMS_SETTINGS_SOURCE="$ROOT_DIR/dms/settings.json"
+DMS_SETTINGS_DEST="$DMS_CONFIG_DIR/settings.json"
 DMS_PLUGINS=(
     niriWindows
 )
@@ -100,6 +102,25 @@ install_niri_config() {
     fi
 }
 
+install_dms_settings() {
+    info "Instalando configuração do DMS..."
+
+    if [[ ! -f "$DMS_SETTINGS_SOURCE" ]]; then
+        warning "settings.json não encontrado em $DMS_SETTINGS_SOURCE — pulando."
+        return 0
+    fi
+
+    mkdir -p "$DMS_CONFIG_DIR"
+
+    if [[ -f "$DMS_SETTINGS_DEST" ]] && ! cmp -s "$DMS_SETTINGS_SOURCE" "$DMS_SETTINGS_DEST"; then
+        backup_file "$DMS_SETTINGS_DEST"
+    fi
+
+    cp "$DMS_SETTINGS_SOURCE" "$DMS_SETTINGS_DEST"
+
+    success "Configuração do DMS instalada (reinicie o DMS: dms restart)."
+}
+
 install_dms_plugins() {
     if [[ ${#DMS_PLUGINS[@]} -eq 0 ]]; then
         return 0
@@ -177,6 +198,7 @@ setup_dms() {
     install_dms
     install_niri
     install_niri_config
+    install_dms_settings
     install_dms_plugins
     set_niri_as_default_session
 

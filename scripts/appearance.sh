@@ -14,6 +14,14 @@ CURSOR_VERSION="2.0.7"
 CURSOR_URL="https://github.com/ful1e5/Bibata_Cursor/releases/download/v${CURSOR_VERSION}/${CURSOR_THEME}.tar.xz"
 ICONS_DEST="$HOME/.local/share/icons"
 
+GTK_THEME="adw-gtk3-dark"
+GTK_FONT="Inter 10"
+ADW_GTK3_VERSION="6.5"
+ADW_GTK3_URL="https://github.com/lassekongo83/adw-gtk3/releases/download/v${ADW_GTK3_VERSION}/adw-gtk3v${ADW_GTK3_VERSION}.tar.xz"
+THEMES_DEST="$HOME/.local/share/themes"
+
+QT6CT_CONFIG="$HOME/.config/qt6ct/qt6ct.conf"
+
 DMS_SETTINGS="$HOME/.config/DankMaterialShell/settings.json"
 DMS_ICON_THEME_DARK="Papirus-Dark"
 DMS_ICON_THEME_LIGHT="Papirus-Light"
@@ -54,17 +62,106 @@ install_cursor_theme() {
     success "$CURSOR_THEME instalado."
 }
 
+install_gtk_theme() {
+    info "Verificando tema GTK (adw-gtk3)..."
+
+    if [[ -d "$THEMES_DEST/adw-gtk3-dark" ]]; then
+        success "adw-gtk3 já está instalado."
+        return 0
+    fi
+
+    info "Baixando adw-gtk3 v$ADW_GTK3_VERSION..."
+
+    local temp_dir
+    temp_dir="$(mktemp -d)"
+
+    curl -fSL "$ADW_GTK3_URL" -o "$temp_dir/adw-gtk3.tar.xz"
+
+    mkdir -p "$THEMES_DEST"
+    tar -xf "$temp_dir/adw-gtk3.tar.xz" -C "$THEMES_DEST"
+
+    rm -rf "$temp_dir"
+
+    success "adw-gtk3 instalado."
+}
+
+install_qt6ct() {
+    info "Verificando qt6ct..."
+
+    if rpm -q qt6ct >/dev/null 2>&1; then
+        success "qt6ct já está instalado."
+    elif command_exists dnf; then
+        sudo dnf install -y qt6ct
+        success "qt6ct instalado."
+    else
+        warning "qt6ct só está configurado para instalação via DNF — pulando."
+        return 0
+    fi
+
+    if [[ -f "$QT6CT_CONFIG" ]] && grep -q "icon_theme=$ICON_THEME" "$QT6CT_CONFIG"; then
+        return 0
+    fi
+
+    mkdir -p "$(dirname "$QT6CT_CONFIG")"
+
+    # Config base; o DMS reescreve as cores via template matugen do qt6ct.
+    cat > "$QT6CT_CONFIG" <<EOF
+[Appearance]
+icon_theme=$ICON_THEME
+style=Fusion
+standard_dialogs=default
+
+[Fonts]
+fixed="JetBrainsMono Nerd Font,10,-1,5,50,0,0,0,0,0"
+general="Inter,10,-1,5,50,0,0,0,0,0"
+
+[Interface]
+cursor_flash_time=1000
+double_click_interval=400
+EOF
+
+    success "qt6ct configurado."
+}
+
+write_gtk_settings() {
+    info "Escrevendo settings.ini do GTK..."
+
+    local dark="0"
+    [[ "$GTK_THEME" == *dark* ]] && dark="1"
+
+    local ini
+    for ver in 3.0 4.0; do
+        ini="$HOME/.config/gtk-$ver/settings.ini"
+        mkdir -p "$(dirname "$ini")"
+
+        cat > "$ini" <<EOF
+[Settings]
+gtk-theme-name=$GTK_THEME
+gtk-icon-theme-name=$ICON_THEME
+gtk-cursor-theme-name=$CURSOR_THEME
+gtk-cursor-theme-size=$CURSOR_SIZE
+gtk-font-name=$GTK_FONT
+gtk-application-prefer-dark-theme=$dark
+EOF
+    done
+
+    success "settings.ini do GTK escrito (3.0 e 4.0)."
+}
+
 apply_gsettings() {
     if ! command_exists gsettings; then
         warning "gsettings não encontrado — pulando aplicação do tema."
         return 0
     fi
 
-    info "Aplicando tema de ícones e cursor (GTK/gsettings)..."
+    info "Aplicando tema (gsettings)..."
 
     gsettings set org.gnome.desktop.interface icon-theme "$ICON_THEME"
     gsettings set org.gnome.desktop.interface cursor-theme "$CURSOR_THEME"
     gsettings set org.gnome.desktop.interface cursor-size "$CURSOR_SIZE"
+    gsettings set org.gnome.desktop.interface gtk-theme "$GTK_THEME"
+    gsettings set org.gnome.desktop.interface font-name "$GTK_FONT"
+    gsettings set org.gnome.desktop.interface color-scheme "prefer-dark"
 
     success "Tema aplicado."
 }
@@ -116,20 +213,25 @@ configure_dms_icon_theme() {
         info "settings.json do DMS criado (será mesclado no primeiro run)."
     fi
 
-    # Se o DMS estiver rodando, aplica ao vivo.
+    # Se o DMS estiver rodando, aplica ao vivo (ícones + tema GTK/Qt).
     if command_exists dms && pgrep -f 'quickshell/dms' >/dev/null 2>&1; then
         dms ipc call settings set iconThemeDark "$DMS_ICON_THEME_DARK" >/dev/null 2>&1 || true
         dms ipc call settings set iconThemeLight "$DMS_ICON_THEME_LIGHT" >/dev/null 2>&1 || true
+        dms ipc call settings set gtkThemingEnabled true >/dev/null 2>&1 || true
+        dms ipc call settings set qtThemingEnabled true >/dev/null 2>&1 || true
     fi
 
     success "Tema de ícones do DMS configurado."
 }
 
 setup_appearance() {
-    info "Configurando aparência (ícones + cursor)..."
+    info "Configurando aparência (ícones + cursor + GTK/Qt)..."
 
     install_icon_theme
     install_cursor_theme
+    install_gtk_theme
+    install_qt6ct
+    write_gtk_settings
     apply_gsettings
     apply_xresources_cursor
     configure_dms_icon_theme
