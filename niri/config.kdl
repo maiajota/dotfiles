@@ -174,14 +174,9 @@ layout {
         // - RGB hex: "#rgb", "#rgba", "#rrggbb", "#rrggbbaa"
         // - CSS-like notation: "rgb(255, 127, 0)", rgba(), hsl() and a few others.
 
-        // Color of the ring on the active monitor.
-        active-color "#7fc8ff"
-
-        // Color of the ring on inactive monitors.
-        //
-        // The focus ring only draws around the active window, so the only place
-        // where you can see its inactive-color is on other monitors.
-        inactive-color "#505050"
+        // Cores definidas por dms/colors.kdl (DankMaterialShell / matugen).
+        // active-color "#7fc8ff"
+        // inactive-color "#505050"
 
         // You can also use gradients. They take precedence over solid colors.
         // Gradients are rendered the same as CSS linear-gradient(angle, from, to).
@@ -297,7 +292,9 @@ cursor {
 // Additionally, clients will be informed that they are tiled, removing some client-side rounded corners.
 // This option will also fix border/focus ring drawing behind some semitransparent windows.
 // After enabling or disabling this, you need to restart the apps for this to take effect.
-// prefer-no-csd
+// Habilitado (dotfiles): remove barras de título client-side feias (ex.: Spotify em
+// modo Wayland fica sem barra, só com o focus ring do niri).
+prefer-no-csd
 
 // You can change the path where screenshots are saved.
 // A ~ at the front will be expanded to the home directory.
@@ -666,3 +663,7 @@ binds {
 // DMS (dotfiles)
 include "dms/colors.kdl"
 spawn-at-startup "dms" "run"
+
+// Tema para apps XWayland (jogos, wine, apps GTK sem settings-daemon).
+// Apps Flatpak pegam o tema via `flatpak override` (GTK_THEME + ~/.local/share/themes).
+spawn-at-startup "xsettingsd"

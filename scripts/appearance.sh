@@ -2,11 +2,15 @@
 set -euo pipefail
 
 APPEARANCE_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+APPEARANCE_ROOT_DIR="$(cd "$APPEARANCE_SCRIPT_DIR/.." && pwd)"
 
 source "$APPEARANCE_SCRIPT_DIR/common.sh"
 
 ICON_THEME="Papirus-Dark"
 ICON_PACKAGE="papirus-icon-theme"
+
+XSETTINGSD_SOURCE="$APPEARANCE_ROOT_DIR/xsettingsd/xsettingsd.conf"
+XSETTINGSD_DEST="$HOME/.config/xsettingsd/xsettingsd.conf"
 
 CURSOR_THEME="Bibata-Modern-Ice"
 CURSOR_SIZE="24"
@@ -224,6 +228,60 @@ configure_dms_icon_theme() {
     success "Tema de ícones do DMS configurado."
 }
 
+setup_xsettingsd() {
+    info "Configurando xsettingsd (tema para apps XWayland)..."
+
+    if command_exists dnf && ! rpm -q xsettingsd >/dev/null 2>&1; then
+        sudo dnf install -y xsettingsd
+    fi
+
+    if [[ ! -f "$XSETTINGSD_SOURCE" ]]; then
+        warning "xsettingsd.conf não encontrado em $XSETTINGSD_SOURCE — pulando."
+        return 0
+    fi
+
+    mkdir -p "$(dirname "$XSETTINGSD_DEST")"
+
+    if [[ -f "$XSETTINGSD_DEST" ]] && ! cmp -s "$XSETTINGSD_SOURCE" "$XSETTINGSD_DEST"; then
+        backup_file "$XSETTINGSD_DEST"
+    fi
+
+    cp "$XSETTINGSD_SOURCE" "$XSETTINGSD_DEST"
+
+    # Recarrega ao vivo se já estiver rodando (niri o inicia via spawn-at-startup).
+    if pgrep -x xsettingsd >/dev/null 2>&1; then
+        pkill -HUP -x xsettingsd || true
+    fi
+
+    success "xsettingsd configurado."
+}
+
+setup_flatpak_theming() {
+    if ! command_exists flatpak; then
+        return 0
+    fi
+
+    info "Aplicando tema aos apps Flatpak (override global)..."
+
+    # Extensão do tema GTK3 (usada por apps Flatpak que ainda dependem de GTK3).
+    flatpak install -y --noninteractive flathub "org.gtk.Gtk3theme.${GTK_THEME}" >/dev/null 2>&1 || true
+
+    flatpak override --user \
+        --env=GTK_THEME="$GTK_THEME" \
+        --env=ICON_THEME="$ICON_THEME" \
+        --env=XCURSOR_THEME="$CURSOR_THEME" \
+        --env=XCURSOR_SIZE="$CURSOR_SIZE" \
+        --filesystem=xdg-config/gtk-3.0:ro \
+        --filesystem=xdg-config/gtk-4.0:ro \
+        --filesystem="$THEMES_DEST":ro \
+        --filesystem="$HOME/.themes":ro \
+        --filesystem=/usr/share/icons:ro \
+        --filesystem="$ICONS_DEST":ro \
+        --filesystem="$HOME/.icons":ro
+
+    success "Override de tema do Flatpak aplicado."
+}
+
 setup_appearance() {
     info "Configurando aparência (ícones + cursor + GTK/Qt)..."
 
@@ -234,6 +292,8 @@ setup_appearance() {
     write_gtk_settings
     apply_gsettings
     apply_xresources_cursor
+    setup_xsettingsd
+    setup_flatpak_theming
     configure_dms_icon_theme
 
     success "Aparência preparada."

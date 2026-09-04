@@ -74,6 +74,23 @@ install_niri() {
     success "niri instalado."
 }
 
+install_login_keyring_pam() {
+    command_exists dnf || return 0
+
+    # Sem esse pacote o /usr/lib64/security/pam_gnome_keyring.so não existe e o
+    # gnome-keyring nunca é destravado no login — apps (Spotify etc.) ficam
+    # pedindo a senha do "Chaveiro padrão" toda vez. As linhas pam_gnome_keyring
+    # já vêm no /etc/pam.d/sddm da Fedora (como opcionais).
+    if rpm -q gnome-keyring-pam >/dev/null 2>&1; then
+        success "gnome-keyring-pam já está instalado."
+        return 0
+    fi
+
+    info "Instalando gnome-keyring-pam (destrava o chaveiro no login)..."
+    sudo dnf install -y gnome-keyring-pam
+    success "gnome-keyring-pam instalado (efetivo no próximo login)."
+}
+
 install_niri_config() {
     info "Instalando config do niri..."
 
@@ -197,6 +214,7 @@ setup_dms() {
     enable_dms_copr
     install_dms
     install_niri
+    install_login_keyring_pam
     install_niri_config
     install_dms_settings
     install_dms_plugins

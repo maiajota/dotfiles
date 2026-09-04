@@ -14,6 +14,7 @@ source "$ROOT_DIR/scripts/packages.sh"
 source "$ROOT_DIR/scripts/sddm.sh"
 source "$ROOT_DIR/scripts/kde.sh"
 source "$ROOT_DIR/scripts/dms.sh"
+source "$ROOT_DIR/scripts/apps.sh"
 source "$ROOT_DIR/scripts/fonts.sh"
 source "$ROOT_DIR/scripts/appearance.sh"
 source "$ROOT_DIR/scripts/kitty.sh"
@@ -67,6 +68,10 @@ setup_kde
 echo
 
 setup_dms
+
+echo
+
+setup_apps
 
 echo
 
