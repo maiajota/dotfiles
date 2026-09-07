@@ -22,6 +22,14 @@ DMS_SETTINGS_SOURCE="$ROOT_DIR/dms/settings.json"
 DMS_SETTINGS_DEST="$DMS_CONFIG_DIR/settings.json"
 DMS_PLUGINS=(
     niriWindows
+    calculator
+    claudeCodeUsage
+    dankPomodoroTimer
+    dankTodo
+    dmsThemeSync
+    fullscreenPowerMenu
+    githubNotifier
+    quickCapture
 )
 
 enable_dms_copr() {
